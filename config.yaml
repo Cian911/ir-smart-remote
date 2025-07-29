@@ -1,0 +1,133 @@
+esphome:
+  name: esphome-web-908558
+  friendly_name: IR YT
+  min_version: 2025.5.0
+  name_add_mac_suffix: false
+
+esp8266:
+  board: esp01_1m
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+globals:
+  - id: radio_state
+    type: bool
+    restore_value: true
+    initial_value: "false" # Assume off initially (false = off, true = on)
+
+logger:
+
+api:
+
+# Allow Over-The-Air updates
+ota:
+  - platform: esphome
+
+# Enable IR receiver on D3 (GPIO0)
+remote_receiver:
+  pin:
+    number: GPIO0
+    inverted: true
+  dump: nec
+  idle: 100ms
+  filter: 10us
+  tolerance: 25%
+  on_nec:
+    then:
+      - lambda: |-
+          if (x.address == 0xEF00 && x.command == 0xF00F) {
+            id(radio_state) = !id(radio_state);
+            ESP_LOGI("state_machine", "Remote power pressed. New state: %s", id(radio_state) ? "ON" : "OFF");
+          }
+
+# Enable IR transmitter on D8 (GPIO15)
+remote_transmitter:
+  pin: GPIO15
+  carrier_duty_percent: 50%
+
+# Expose radio_state as a binary sensor to be used in automations
+binary_sensor:
+  - platform: template
+    name: "Radio State"
+    lambda: "return id(radio_state);"
+
+button:
+  - platform: template
+    name: "Radio On/Off"
+    on_press:
+      - if:
+          condition:
+            lambda: "return !id(radio_state);" # Only send if currently OFF
+          then:
+            - remote_transmitter.transmit_nec:
+                address: 0xEF00
+                command: 0xF00F
+          else:
+            - remote_transmitter.transmit_nec:
+                address: 0xEF00
+                command: 0xF00F
+
+  - platform: template
+    name: "Radio Volume Up"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xE916
+
+  - platform: template
+    name: "Radio Volume Down"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xE718
+
+  - platform: template
+    name: "Radio Mute"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xF20D
+
+  - platform: template
+    name: "Radio OK"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xDC23
+
+  - platform: template
+    name: "Radio UP"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xF10E
+
+  - platform: template
+    name: "Radio DWN"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xE01F
+
+  - platform: template
+    name: "Radio LFT"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xE31C
+
+  - platform: template
+    name: "Radio RGT"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xE21D
+
+  - platform: template
+    name: "Radio SRC"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0xEF00
+          command: 0xF807
